@@ -11,7 +11,7 @@ description: >
 license: MIT
 metadata:
   author: YixinZ-NUS
-  version: "2.0"
+  version: "4.0"
   repo: https://github.com/YixinZ-NUS/insight-io-agent-skills
   changelog: See CHANGELOG.md in the repo root.
 compatibility: Designed for GitHub Copilot CLI / Claude Code (or similar products)
@@ -94,28 +94,27 @@ report, and all review fixes applied.
 
 ## Part B — Micro-Experiment Documentation
 
-### Step B0 — Rubber-Duck the Plan: Spawn Critics in Parallel
+### Step B0 — Rubber-Duck the Plan: Spawn `code-review` Critics in Parallel
 
-Self-review is weak — the same model that wrote the plan is reviewing it.
-Instead, **spawn one `general-purpose` subagent per critique dimension in
-parallel** before executing anything. Each agent gets the full experiment plan
-as context and a single focused question. Launch all of them in one turn:
+Self-review is weak — the same model that wrote the plan reviews it with the
+same blind spots. Instead, **spawn multiple `code-review` subagents in parallel
+before executing anything**. Each agent receives the full written experiment
+plan and a single focused critique prompt:
 
-| Agent name | Prompt |
-|------------|--------|
-| `critic-isolation` | "Review this experiment plan. For each experiment, does it isolate exactly one variable, or does the setup change multiple things at once? List every isolation failure you find." |
-| `critic-confounds` | "Review this experiment plan. Identify any confounding variables — places where the setup accidentally changes something other than the intended variable. Be specific." |
-| `critic-reasoning` | "Review this experiment plan. Flag any circular reasoning: cases where the measurement captures the symptom rather than the root cause." |
-| `critic-tool-bias` | "Review this experiment plan. Identify tool bias: places where the chosen tool, flag, or log level could hide failures. Suggest stricter alternatives." |
-| `critic-symmetry` | "Review this experiment plan. For any pair of experiments that test opposite hypotheses, check that their setups are identical except for the one variable under test." |
+| Agent name | Critique focus |
+|------------|----------------|
+| `critic-isolation` | Does each experiment isolate exactly one variable, or does the setup change multiple things at once? |
+| `critic-confounds` | Are there confounding variables — places where the setup accidentally changes something other than the intended variable? |
+| `critic-reasoning` | Is there circular reasoning — measuring the symptom rather than the root cause? |
+| `critic-tool-bias` | Does the choice of tool, flag, or log level hide failures? (e.g., `-loglevel error` swallowing corruption that `-err_detect +careful` would catch) |
+| `critic-symmetry` | For pairs of experiments testing opposite hypotheses: are their setups identical except for the single variable under test? |
 
-Collect all responses before running a single experiment. Revise the plan to
-address every issue raised. A critique that costs 5 minutes of parallel compute
-routinely saves hours of investigation down a wrong path.
+Collect all responses. Revise the plan to address every blocking issue raised.
+Do not execute any experiment until all critics are satisfied.
 
-**Minimum bar**: at least one `general-purpose` critic agent must find zero
-blocking issues before execution proceeds. If any agent flags a blocking issue,
-revise and re-run that agent.
+The `code-review` agent is Copilot's native high-signal reviewer — it surfaces
+only genuine issues, never style noise, and will not modify anything. Parallel
+dispatch means the critique costs one turn of wall time, not five.
 
 ### Step B1 — Create the Report First
 
@@ -123,20 +122,9 @@ Before running any experiment, create (or append to) a markdown report under
 `docs/experiments/`. Do **not** start executing until the plan is written and
 rubber-ducked.
 
-### Step B2 — Execute Experiments in Parallel via Subagents
+### Step B2 — Structure Each Experiment Entry
 
-For independent experiments (no data dependency between them), **spawn one
-`general-purpose` subagent per experiment in a single turn**. Give each agent:
-
-- The full experiment plan (hypothesis, setup, expected result)
-- The repo path and any relevant source files
-- The instruction to write its Hypothesis / Setup / Result / Conclusion block
-  directly into `docs/experiments/<name>.md`
-
-Experiments that depend on each other's results must run sequentially — spawn
-the next agent only after reading the prior one's conclusion.
-
-Each subagent's response becomes the experiment entry:
+Number experiments sequentially (`Exp 1`, `Exp 2`, …). For each entry:
 
 | Field | Content |
 |-------|---------|
