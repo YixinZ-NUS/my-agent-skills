@@ -2,22 +2,6 @@
 
 All notable changes to this project are documented here.
 
-## [3.0] — 2026-04-14
-
-### Changed
-- `micro-experiment-documentation` skill: rubber-duck and execution steps now
-  use subagents rather than self-review.
-  - **Step B0** replaced with a parallel subagent critic pattern: spawn five
-    `general-purpose` agents simultaneously (critic-isolation,
-    critic-confounds, critic-reasoning, critic-tool-bias, critic-symmetry),
-    each with a focused critique prompt. Execution is blocked until all agents
-    report no blocking issues.
-  - **Step B2** restructured: spawn one `general-purpose` agent per
-    independent experiment in a single turn; sequential ordering only when
-    experiments have data dependencies.
-  - Step A4 (branch workflow) updated to call out parallel subagent execution
-    explicitly.
-
 ## [2.0] — 2026-04-14
 
 ### Changed

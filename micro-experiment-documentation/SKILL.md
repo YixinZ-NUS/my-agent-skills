@@ -71,9 +71,8 @@ clear handoff artifact so work can be resumed by any agent or human.
 Follow Part B below. For each branch:
 
 1. Write the experiment plan with numbered experiments (Exp 1, Exp 2, …).
-2. **Rubber-duck the plan** (see Part B, Step B0) — spawn subagents in parallel.
-3. Execute each experiment — spawn a `general-purpose` subagent per experiment
-   in parallel (see Part B, Step B2).
+2. **Rubber-duck the plan** (see Part B, Step B0).
+3. Execute with full Setup / Result / Conclusion documentation.
 4. Save report as `docs/experiments/<name>.md`.
 5. Commit and push to the experiment branch.
 
@@ -94,28 +93,23 @@ report, and all review fixes applied.
 
 ## Part B — Micro-Experiment Documentation
 
-### Step B0 — Rubber-Duck the Plan: Spawn Critics in Parallel
+### Step B0 — Rubber-Duck the Plan First
 
-Self-review is weak — the same model that wrote the plan is reviewing it.
-Instead, **spawn one `general-purpose` subagent per critique dimension in
-parallel** before executing anything. Each agent gets the full experiment plan
-as context and a single focused question. Launch all of them in one turn:
+Write the full experiment plan, then **critique it as if reviewing someone
+else's work** before running anything:
 
-| Agent name | Prompt |
-|------------|--------|
-| `critic-isolation` | "Review this experiment plan. For each experiment, does it isolate exactly one variable, or does the setup change multiple things at once? List every isolation failure you find." |
-| `critic-confounds` | "Review this experiment plan. Identify any confounding variables — places where the setup accidentally changes something other than the intended variable. Be specific." |
-| `critic-reasoning` | "Review this experiment plan. Flag any circular reasoning: cases where the measurement captures the symptom rather than the root cause." |
-| `critic-tool-bias` | "Review this experiment plan. Identify tool bias: places where the chosen tool, flag, or log level could hide failures. Suggest stricter alternatives." |
-| `critic-symmetry` | "Review this experiment plan. For any pair of experiments that test opposite hypotheses, check that their setups are identical except for the one variable under test." |
+- **Isolation**: Does each experiment isolate exactly one variable?
+- **Confounding variables**: Does the setup accidentally change two things
+  at once?
+- **Circular reasoning**: Are you measuring the symptom instead of the
+  cause?
+- **Tool bias**: Are you seeing "no error" because the tool hides it?
+  (e.g., `-loglevel error` silently swallows corruption that
+  `-err_detect +careful` catches)
+- **Symmetry**: Experiments targeting opposite hypotheses must share an
+  identical setup except for the single variable under test.
 
-Collect all responses before running a single experiment. Revise the plan to
-address every issue raised. A critique that costs 5 minutes of parallel compute
-routinely saves hours of investigation down a wrong path.
-
-**Minimum bar**: at least one `general-purpose` critic agent must find zero
-blocking issues before execution proceeds. If any agent flags a blocking issue,
-revise and re-run that agent.
+A 5-minute critique can save hours down a wrong path.
 
 ### Step B1 — Create the Report First
 
@@ -123,20 +117,9 @@ Before running any experiment, create (or append to) a markdown report under
 `docs/experiments/`. Do **not** start executing until the plan is written and
 rubber-ducked.
 
-### Step B2 — Execute Experiments in Parallel via Subagents
+### Step B2 — Structure Each Experiment Entry
 
-For independent experiments (no data dependency between them), **spawn one
-`general-purpose` subagent per experiment in a single turn**. Give each agent:
-
-- The full experiment plan (hypothesis, setup, expected result)
-- The repo path and any relevant source files
-- The instruction to write its Hypothesis / Setup / Result / Conclusion block
-  directly into `docs/experiments/<name>.md`
-
-Experiments that depend on each other's results must run sequentially — spawn
-the next agent only after reading the prior one's conclusion.
-
-Each subagent's response becomes the experiment entry:
+Number experiments sequentially (`Exp 1`, `Exp 2`, …). For each entry:
 
 | Field | Content |
 |-------|---------|
