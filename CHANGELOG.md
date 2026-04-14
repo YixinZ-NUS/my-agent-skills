@@ -2,19 +2,6 @@
 
 All notable changes to this project are documented here.
 
-## [4.0] — 2026-04-14
-
-### Changed
-- `micro-experiment-documentation` skill: use Copilot's native `code-review`
-  agent type for parallel critics instead of generic `general-purpose` agents.
-  - **Step B0**: critics are now spawned as `code-review` subagents in parallel.
-    `code-review` is Copilot's built-in high-signal reviewer — it surfaces only
-    genuine issues, never style noise, and will not modify anything. One agent
-    per critique dimension (isolation, confounds, reasoning, tool-bias,
-    symmetry).
-  - **Step B2**: parallel experiment execution via subagents removed entirely.
-    Experiments run sequentially; only the critic phase (Step B0) is parallel.
-
 ## [3.0] — 2026-04-14
 
 ### Changed
