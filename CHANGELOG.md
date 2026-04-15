@@ -2,6 +2,16 @@
 
 All notable changes to this project are documented here.
 
+## [2.1] — 2026-04-15
+
+### Added
+- `local-transcribe` skill: local audio/video transcription with `faster-whisper`
+  and `imageio-ffmpeg`.
+  - Supports glossary-guided transcription via `--initial-prompt` and
+    `--hotwords` for acronyms, product names, and speaker names.
+  - Deletes intermediate chunk WAVs by default so output directories keep only
+    transcript artifacts unless `--keep-temp-files` is set.
+
 ## [2.0] — 2026-04-14
 
 ### Changed
