@@ -1,0 +1,40 @@
+# Glossary mined from cn-2 baseline (Web3 founder talk).
+# Used to demonstrate the iterative-refinement workflow.
+
+# Companies / products
+SafeHeron
+SumSub
+BitGet
+Lovable
+Bolt
+Manus
+Cursor
+v0
+Magic Path
+Replit
+
+# Web3 / payments / compliance
+KYB
+KYC
+KYT
+AML
+PCI
+Web3
+Web2
+FinTech
+Stripe
+USDC
+USDT
+Webhook
+x402
+MCP
+ASEAN
+SEO
+GEO
+U卡
+稳定币
+法币
+合规
+反洗钱
+钱包
+区块链

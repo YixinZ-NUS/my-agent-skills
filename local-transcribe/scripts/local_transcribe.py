@@ -48,7 +48,13 @@ def media_duration(path: Path) -> float:
         container.close()
 
 
-def extract_wav(src: Path, dst: Path, start: float, duration: float) -> None:
+def extract_wav(
+    src: Path,
+    dst: Path,
+    start: float,
+    duration: float,
+    audio_filter: Optional[str] = None,
+) -> None:
     dst.parent.mkdir(parents=True, exist_ok=True)
     cmd = [
         ffmpeg(),
@@ -64,11 +70,44 @@ def extract_wav(src: Path, dst: Path, start: float, duration: float) -> None:
         "1",
         "-ar",
         "16000",
+    ]
+    if audio_filter:
+        cmd += ["-af", audio_filter]
+    cmd += [
         "-c:a",
         "pcm_s16le",
         str(dst),
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+
+def load_glossary(path: Optional[Path]) -> list[str]:
+    """Load a glossary file: one term per line, '#' starts a comment."""
+    if not path:
+        return []
+    terms: list[str] = []
+    for raw in path.read_text(encoding="utf-8").splitlines():
+        line = raw.split("#", 1)[0].strip()
+        if not line:
+            continue
+        terms.append(line)
+    return terms
+
+
+def merge_glossary_with_arg(file_terms: list[str], arg_value: Optional[str]) -> Optional[str]:
+    """Combine glossary file terms with a comma-separated CLI value, dedup preserving order."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for source in (file_terms, [t.strip() for t in (arg_value or "").split(",") if t.strip()]):
+        for term in source:
+            key = term.lower()
+            if key in seen:
+                continue
+            seen.add(key)
+            out.append(term)
+    if not out:
+        return None
+    return ", ".join(out)
 
 
 def transcribe_chunk(
@@ -79,11 +118,12 @@ def transcribe_chunk(
     beam_size: int,
     initial_prompt: Optional[str],
     hotwords: Optional[str],
+    vad_filter: bool = True,
 ) -> tuple[str, list[dict]]:
     segments, info = model.transcribe(
         str(wav_path),
         beam_size=beam_size,
-        vad_filter=True,
+        vad_filter=vad_filter,
         language=language,
         initial_prompt=initial_prompt,
         hotwords=hotwords,
@@ -110,6 +150,26 @@ def main() -> None:
     p.add_argument("--initial-prompt", default=None)
     p.add_argument("--hotwords", default=None)
     p.add_argument(
+        "--glossary-file",
+        default=None,
+        help="Path to a UTF-8 text file with one term per line ('#' for comments). "
+             "Terms are merged with --hotwords and (when --initial-prompt is empty) "
+             "used to seed the initial prompt.",
+    )
+    p.add_argument(
+        "--audio-filter",
+        default=None,
+        help="Optional ffmpeg -af expression applied during chunk extraction. "
+             "Useful for noisy / music-heavy recordings, e.g. "
+             "'highpass=f=80,lowpass=f=8000,loudnorm=I=-16:LRA=11:TP=-1.5'.",
+    )
+    p.add_argument(
+        "--vad-filter",
+        choices=("on", "off"),
+        default="on",
+        help="Toggle faster-whisper VAD pre-filter. Turn off for very dense / overlapping speech.",
+    )
+    p.add_argument(
         "--keep-temp-files",
         action="store_true",
         help="Keep extracted chunk WAV files instead of deleting them after transcription.",
@@ -119,6 +179,12 @@ def main() -> None:
     src = Path(args.input).expanduser().resolve()
     out_dir = Path(args.out_dir).expanduser().resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
+
+    glossary_terms = load_glossary(Path(args.glossary_file).expanduser().resolve()) if args.glossary_file else []
+    hotwords = merge_glossary_with_arg(glossary_terms, args.hotwords)
+    initial_prompt = args.initial_prompt
+    if initial_prompt is None and glossary_terms:
+        initial_prompt = ", ".join(glossary_terms)
 
     total_duration = media_duration(src)
     start = parse_hms(args.start) if args.start else 0.0
@@ -147,8 +213,12 @@ def main() -> None:
         "chunk_seconds": chunk_seconds,
         "language": args.language,
         "beam_size": args.beam_size,
-        "initial_prompt": args.initial_prompt,
-        "hotwords": args.hotwords,
+        "initial_prompt": initial_prompt,
+        "hotwords": hotwords,
+        "glossary_file": args.glossary_file,
+        "glossary_terms": glossary_terms,
+        "audio_filter": args.audio_filter,
+        "vad_filter": args.vad_filter,
         "keep_temp_files": args.keep_temp_files,
         "chunks": [],
     }
@@ -161,14 +231,15 @@ def main() -> None:
             if this_duration <= 0:
                 break
             wav_path = temp_root / f"chunk-{i:03d}.wav"
-            extract_wav(src, wav_path, chunk_start, this_duration)
+            extract_wav(src, wav_path, chunk_start, this_duration, audio_filter=args.audio_filter)
             text, rows = transcribe_chunk(
                 model,
                 wav_path,
                 language=args.language,
                 beam_size=args.beam_size,
-                initial_prompt=args.initial_prompt,
-                hotwords=args.hotwords,
+                initial_prompt=initial_prompt,
+                hotwords=hotwords,
+                vad_filter=args.vad_filter == "on",
             )
             text_parts.append(f"## chunk {i:03d} start={sec_to_hms(chunk_start)} duration={sec_to_hms(this_duration)}\n{text}")
             adjusted_rows = []

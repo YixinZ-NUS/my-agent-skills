@@ -1,0 +1,15 @@
+# UI/UX design podcast glossary (matches test-en.m4a content).
+UI
+UX
+wireframe
+low-fidelity
+high-fidelity
+mockup
+splash screen
+in-app purchase
+conversion rate
+retention
+job-seekers
+zero to one
+techie
+minimalist

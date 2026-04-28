@@ -1,0 +1,20 @@
+# Generic Simplified Chinese glossary seed.
+# 一行一个，'#' 开头是注释。
+# Whisper 在 zh 模式下对夹杂的英文术语容易出错，把它们放进来当 hotwords/initial-prompt。
+KYB
+KYC
+KYT
+AML
+FinTech
+Web3
+Webhook
+API
+SDK
+USDC
+USDT
+区块链
+合规
+反洗钱
+钱包
+法币
+稳定币

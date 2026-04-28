@@ -1,0 +1,19 @@
+# Web3 / FinTech / payments glossary for English transcripts.
+# One term per line. '#' starts a comment.
+KYB
+KYC
+KYT
+AML
+FinTech
+Web3
+Webhook
+Stripe
+API
+SDK
+USDC
+USDT
+fiat
+on-chain
+off-chain
+compliance
+sanctions
