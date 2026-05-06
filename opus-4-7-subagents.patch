@@ -1,0 +1,239 @@
+diff --git a/skills/brainstorming/spec-document-reviewer-prompt.md b/skills/brainstorming/spec-document-reviewer-prompt.md
+index 35acbb6..ddb4998 100644
+--- a/skills/brainstorming/spec-document-reviewer-prompt.md
++++ b/skills/brainstorming/spec-document-reviewer-prompt.md
+@@ -6,9 +6,12 @@ Use this template when dispatching a spec document reviewer subagent.
+ 
+ **Dispatch after:** Spec document is written to docs/superpowers/specs/
+ 
++**Required Task tool parameters:** `agent_type: "general-purpose"`, `model: "claude-opus-4.7"` (always pass explicitly), `description`, `prompt`.
++
+ ```
+ Task tool (general-purpose):
+   description: "Review spec document"
++  model: "claude-opus-4.7"
+   prompt: |
+     You are a spec document reviewer. Verify this spec is complete and ready for planning.
+ 
+diff --git a/skills/dispatching-parallel-agents/SKILL.md b/skills/dispatching-parallel-agents/SKILL.md
+index a6a3f5a..1e2cfa1 100644
+--- a/skills/dispatching-parallel-agents/SKILL.md
++++ b/skills/dispatching-parallel-agents/SKILL.md
+@@ -67,9 +67,9 @@ Each agent gets:
+ 
+ ```typescript
+ // In Claude Code / AI environment
+-Task("Fix agent-tool-abort.test.ts failures")
+-Task("Fix batch-completion-behavior.test.ts failures")
+-Task("Fix tool-approval-race-conditions.test.ts failures")
++Task("Fix agent-tool-abort.test.ts failures", { model: "claude-opus-4.7" })
++Task("Fix batch-completion-behavior.test.ts failures", { model: "claude-opus-4.7" })
++Task("Fix tool-approval-race-conditions.test.ts failures", { model: "claude-opus-4.7" })
+ // All three run concurrently
+ ```
+ 
+diff --git a/skills/requesting-code-review/SKILL.md b/skills/requesting-code-review/SKILL.md
+index 34b8340..45d8e4d 100644
+--- a/skills/requesting-code-review/SKILL.md
++++ b/skills/requesting-code-review/SKILL.md
+@@ -31,7 +31,7 @@ HEAD_SHA=$(git rev-parse HEAD)
+ 
+ **2. Dispatch code reviewer subagent:**
+ 
+-Use Task tool with `general-purpose` type, fill template at `code-reviewer.md`
++Use Task tool with `general-purpose` type and `model: "claude-opus-4.7"`, fill template at `code-reviewer.md`
+ 
+ **Placeholders:**
+ - `{DESCRIPTION}` - Brief summary of what you built
+diff --git a/skills/requesting-code-review/code-reviewer.md b/skills/requesting-code-review/code-reviewer.md
+index 525e4b4..61b5d9c 100644
+--- a/skills/requesting-code-review/code-reviewer.md
++++ b/skills/requesting-code-review/code-reviewer.md
+@@ -4,9 +4,12 @@ Use this template when dispatching a code reviewer subagent.
+ 
+ **Purpose:** Review completed work against requirements and code quality standards before it cascades into more work.
+ 
++**Required Task tool parameters:** `agent_type: "general-purpose"`, `model: "claude-opus-4.7"` (always pass explicitly), `description`, `prompt`.
++
+ ```
+ Task tool (general-purpose):
+   description: "Review code changes"
++  model: "claude-opus-4.7"
+   prompt: |
+     You are a Senior Code Reviewer with expertise in software architecture,
+     design patterns, and best practices. Your job is to review completed work
+diff --git a/skills/subagent-driven-development/SKILL.md b/skills/subagent-driven-development/SKILL.md
+index ea7ac8f..074de9f 100644
+--- a/skills/subagent-driven-development/SKILL.md
++++ b/skills/subagent-driven-development/SKILL.md
+@@ -88,18 +88,22 @@ digraph process {
+ 
+ ## Model Selection
+ 
+-Use the least powerful model that can handle each role to conserve cost and increase speed.
++**All subagents MUST use `claude-opus-4.7`.** When calling the Task tool, always pass `model: "claude-opus-4.7"` explicitly as a parameter — never rely on the default model. This applies to every implementer, spec reviewer, code quality reviewer, and final reviewer dispatch.
+ 
+-**Mechanical implementation tasks** (isolated functions, clear specs, 1-2 files): use a fast, cheap model. Most implementation tasks are mechanical when the plan is well-specified.
++**Every Task tool call must look like this (model is a REQUIRED parameter you pass, not something the subagent does):**
+ 
+-**Integration and judgment tasks** (multi-file coordination, pattern matching, debugging): use a standard model.
++```typescript
++// Implementer
++Task("Implement Task N: [name]", { agent_type: "general-purpose", model: "claude-opus-4.7", prompt: "..." })
+ 
+-**Architecture, design, and review tasks**: use the most capable available model.
++// Spec reviewer
++Task("Review spec compliance for Task N", { agent_type: "general-purpose", model: "claude-opus-4.7", prompt: "..." })
+ 
+-**Task complexity signals:**
+-- Touches 1-2 files with a complete spec → cheap model
+-- Touches multiple files with integration concerns → standard model
+-- Requires design judgment or broad codebase understanding → most capable model
++// Code quality reviewer
++Task("Review code quality for Task N", { agent_type: "general-purpose", model: "claude-opus-4.7", prompt: "..." })
++```
++
++**Session-level guarantee:** For guaranteed Opus 4.7 subagents, set `"model": "claude-opus-4.7"` in `~/.copilot/settings.json` or start sessions with `copilot --model claude-opus-4.7`. The session model cascades to all dispatched subagents.
+ 
+ ## Handling Implementer Status
+ 
+@@ -121,9 +125,11 @@ Implementer subagents report one of four statuses. Handle each appropriately:
+ 
+ ## Prompt Templates
+ 
+-- `./implementer-prompt.md` - Dispatch implementer subagent
+-- `./spec-reviewer-prompt.md` - Dispatch spec compliance reviewer subagent
+-- `./code-quality-reviewer-prompt.md` - Dispatch code quality reviewer subagent
++**REQUIRED**: Pass `model: "claude-opus-4.7"` to every Task tool call. The default model must be explicitly overridden.
++
++- `./implementer-prompt.md` — Dispatch implementer subagent with `model: "claude-opus-4.7"`
++- `./spec-reviewer-prompt.md` — Dispatch spec compliance reviewer subagent with `model: "claude-opus-4.7"`
++- `./code-quality-reviewer-prompt.md` — Dispatch code quality reviewer subagent with `model: "claude-opus-4.7"`
+ 
+ ## Example Workflow
+ 
+@@ -137,7 +143,7 @@ You: I'm using Subagent-Driven Development to execute this plan.
+ Task 1: Hook installation script
+ 
+ [Get Task 1 text and context (already extracted)]
+-[Dispatch implementation subagent with full task text + context]
++[Dispatch implementation subagent: model="claude-opus-4.7", full task text + context]
+ 
+ Implementer: "Before I begin - should the hook be installed at user or system level?"
+ 
+@@ -150,10 +156,10 @@ Implementer: "Got it. Implementing now..."
+   - Self-review: Found I missed --force flag, added it
+   - Committed
+ 
+-[Dispatch spec compliance reviewer]
++[Dispatch spec compliance reviewer: model="claude-opus-4.7"]
+ Spec reviewer: ✅ Spec compliant - all requirements met, nothing extra
+ 
+-[Get git SHAs, dispatch code quality reviewer]
++[Get git SHAs, dispatch code quality reviewer: model="claude-opus-4.7"]
+ Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
+ 
+ [Mark Task 1 complete]
+@@ -161,7 +167,7 @@ Code reviewer: Strengths: Good test coverage, clean. Issues: None. Approved.
+ Task 2: Recovery modes
+ 
+ [Get Task 2 text and context (already extracted)]
+-[Dispatch implementation subagent with full task text + context]
++[Dispatch implementation subagent: model="claude-opus-4.7", full task text + context]
+ 
+ Implementer: [No questions, proceeds]
+ Implementer:
+@@ -170,7 +176,7 @@ Implementer:
+   - Self-review: All good
+   - Committed
+ 
+-[Dispatch spec compliance reviewer]
++[Dispatch spec compliance reviewer: model="claude-opus-4.7"]
+ Spec reviewer: ❌ Issues:
+   - Missing: Progress reporting (spec says "report every 100 items")
+   - Extra: Added --json flag (not requested)
+@@ -181,7 +187,7 @@ Implementer: Removed --json flag, added progress reporting
+ [Spec reviewer reviews again]
+ Spec reviewer: ✅ Spec compliant now
+ 
+-[Dispatch code quality reviewer]
++[Dispatch code quality reviewer: model="claude-opus-4.7"]
+ Code reviewer: Strengths: Solid. Issues (Important): Magic number (100)
+ 
+ [Implementer fixes]
+@@ -195,7 +201,7 @@ Code reviewer: ✅ Approved
+ ...
+ 
+ [After all tasks]
+-[Dispatch final code-reviewer]
++[Dispatch final code-reviewer: model="claude-opus-4.7"]
+ Final reviewer: All requirements met, ready to merge
+ 
+ Done!
+diff --git a/skills/subagent-driven-development/code-quality-reviewer-prompt.md b/skills/subagent-driven-development/code-quality-reviewer-prompt.md
+index 51f901a..ffe0e1f 100644
+--- a/skills/subagent-driven-development/code-quality-reviewer-prompt.md
++++ b/skills/subagent-driven-development/code-quality-reviewer-prompt.md
+@@ -6,8 +6,11 @@ Use this template when dispatching a code quality reviewer subagent.
+ 
+ **Only dispatch after spec compliance review passes.**
+ 
++**Required Task tool parameters:** `agent_type: "general-purpose"`, `model: "claude-opus-4.7"` (always pass explicitly), `description`, `prompt`.
++
+ ```
+ Task tool (general-purpose):
++  model: "claude-opus-4.7"
+   Use template at requesting-code-review/code-reviewer.md
+ 
+   DESCRIPTION: [task summary, from implementer's report]
+diff --git a/skills/subagent-driven-development/implementer-prompt.md b/skills/subagent-driven-development/implementer-prompt.md
+index 400c103..204ee8c 100644
+--- a/skills/subagent-driven-development/implementer-prompt.md
++++ b/skills/subagent-driven-development/implementer-prompt.md
+@@ -2,9 +2,12 @@
+ 
+ Use this template when dispatching an implementer subagent.
+ 
++**Required Task tool parameters:** `agent_type: "general-purpose"`, `model: "claude-opus-4.7"` (always pass explicitly), `description`, `prompt`.
++
+ ```
+ Task tool (general-purpose):
+   description: "Implement Task N: [task name]"
++  model: "claude-opus-4.7"
+   prompt: |
+     You are implementing Task N: [task name]
+ 
+diff --git a/skills/subagent-driven-development/spec-reviewer-prompt.md b/skills/subagent-driven-development/spec-reviewer-prompt.md
+index ab5ddb8..65c1bcb 100644
+--- a/skills/subagent-driven-development/spec-reviewer-prompt.md
++++ b/skills/subagent-driven-development/spec-reviewer-prompt.md
+@@ -4,9 +4,12 @@ Use this template when dispatching a spec compliance reviewer subagent.
+ 
+ **Purpose:** Verify implementer built what was requested (nothing more, nothing less)
+ 
++**Required Task tool parameters:** `agent_type: "general-purpose"`, `model: "claude-opus-4.7"` (always pass explicitly), `description`, `prompt`.
++
+ ```
+ Task tool (general-purpose):
+   description: "Review spec compliance for Task N"
++  model: "claude-opus-4.7"
+   prompt: |
+     You are reviewing whether an implementation matches its specification.
+ 
+diff --git a/skills/writing-plans/plan-document-reviewer-prompt.md b/skills/writing-plans/plan-document-reviewer-prompt.md
+index 2db2806..fe666e3 100644
+--- a/skills/writing-plans/plan-document-reviewer-prompt.md
++++ b/skills/writing-plans/plan-document-reviewer-prompt.md
+@@ -6,9 +6,12 @@ Use this template when dispatching a plan document reviewer subagent.
+ 
+ **Dispatch after:** The complete plan is written.
+ 
++**Required Task tool parameters:** `agent_type: "general-purpose"`, `model: "claude-opus-4.7"` (always pass explicitly), `description`, `prompt`.
++
+ ```
+ Task tool (general-purpose):
+   description: "Review plan document"
++  model: "claude-opus-4.7"
+   prompt: |
+     You are a plan document reviewer. Verify this plan is complete and ready for implementation.
+ 
