@@ -1,0 +1,64 @@
+# Robotics / world-model seminar terms.
+# Use with --language zh for Mandarin talks that embed English research terms.
+world model
+World Models
+world action model
+World Action Model
+WAM
+robotics
+embodied AI
+Embodied AI
+agentic workflow
+agentic workflows
+action model
+diffusion policy
+Diffusion Policy
+RT-1
+RT-2
+OpenVLA
+VLA
+vision-language-action
+vision language action
+Vision-Language-Action
+ReAct
+Tree of Thoughts
+Chain of Thought
+DeepMind
+Google DeepMind
+Stanford
+Berkeley
+LeCun
+Yann LeCun
+JEPA
+V-JEPA
+I-JEPA
+Dreamer
+MuZero
+AlphaGo
+AlphaZero
+Waymo
+Tesla
+NVIDIA
+Isaac Sim
+ROS
+SLAM
+Sim2Real
+simulation to real
+reinforcement learning
+imitation learning
+large language model
+LLM
+multimodal
+具身智能
+世界模型
+世界动作模型
+动作模型
+智能体工作流
+机器人
+扩散策略
+视觉语言动作模型
+强化学习
+模仿学习
+大语言模型
+多模态
+仿真到现实

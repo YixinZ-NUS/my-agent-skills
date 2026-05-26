@@ -1,0 +1,93 @@
+[
+  {
+    "term": "World Models",
+    "aliases": ["world model", "world models", "世界模型"],
+    "title": "World Models",
+    "url": "https://worldmodels.github.io/",
+    "note": "Original Ha and Schmidhuber project page; useful background for model-based environment simulation."
+  },
+  {
+    "term": "Robotic world models",
+    "aliases": ["robotic world model", "robotic world models", "机器人世界模型"],
+    "title": "Robotic world models—conceptualization, review, and engineering best practices",
+    "url": "https://www.frontiersin.org/journals/robotics-and-ai/articles/10.3389/frobt.2023.1253049/full",
+    "note": "Review article for robotics-specific world-model terminology and engineering context."
+  },
+  {
+    "term": "Embodied World Models",
+    "aliases": ["embodied world model", "embodied world models", "具身世界模型"],
+    "title": "A Survey of Embodied World Models",
+    "url": "https://arxiv.org/abs/2311.08404",
+    "note": "Survey of embodied world models, benchmarks, and representative robotics/embodied AI works."
+  },
+  {
+    "term": "World Action Model",
+    "aliases": ["world action model", "World Action Model", "WAM", "世界动作模型"],
+    "title": "World Action Model",
+    "url": "https://github.com/leofan90/Awesome-World-Models#world-models-for-robotics",
+    "note": "Curated robotics world-model list containing world-action and action-interactive model papers; replace with exact paper when identified from audio."
+  },
+  {
+    "term": "Agentic workflow",
+    "aliases": ["agentic workflow", "agentic workflows", "智能体工作流"],
+    "title": "Agentic workflows",
+    "url": "https://www.deeplearning.ai/the-batch/how-agents-can-improve-llm-performance/",
+    "note": "Andrew Ng's overview of agentic design patterns for LLM applications."
+  },
+  {
+    "term": "LLM-based agentic workflows",
+    "aliases": ["LLM-based agentic workflow", "LLM agentic workflow"],
+    "title": "A Survey on LLM-Based Agentic Workflows and LLM-Profiled Components",
+    "url": "https://arxiv.org/html/2406.05804v1",
+    "note": "Survey tying ReAct, Reflexion, Tree of Thoughts, and planner/evaluator components into agentic workflows."
+  },
+  {
+    "term": "ReAct",
+    "aliases": ["ReAct", "react framework"],
+    "title": "ReAct: Synergizing Reasoning and Acting in Language Models",
+    "url": "https://react-lm.github.io/",
+    "note": "Canonical reasoning-and-acting agent method."
+  },
+  {
+    "term": "Tree of Thoughts",
+    "aliases": ["Tree-of-Thoughts", "ToT"],
+    "title": "Tree of Thoughts: Deliberate Problem Solving with Large Language Models",
+    "url": "https://arxiv.org/abs/2305.10601",
+    "note": "Canonical search-style LLM reasoning method often compared with ReAct and agentic planning."
+  },
+  {
+    "term": "RT-2",
+    "aliases": ["RT-2", "Robotics Transformer 2"],
+    "title": "RT-2: Vision-Language-Action Models Transfer Web Knowledge to Robotic Control",
+    "url": "https://robotics-transformer2.github.io/",
+    "note": "Google DeepMind VLA model connecting web-scale knowledge and robot actions."
+  },
+  {
+    "term": "OpenVLA",
+    "aliases": ["OpenVLA", "open VLA"],
+    "title": "OpenVLA",
+    "url": "https://arxiv.org/abs/2406.09246",
+    "note": "Open-source vision-language-action model for generalist robot control."
+  },
+  {
+    "term": "Diffusion Policy",
+    "aliases": ["Diffusion Policy", "diffusion policy", "扩散策略"],
+    "title": "Diffusion Policy",
+    "url": "https://diffusion-policy.cs.columbia.edu/",
+    "note": "Imitation-learning policy class often discussed in modern robot learning."
+  },
+  {
+    "term": "Dreamer",
+    "aliases": ["Dreamer", "DreamerV3"],
+    "title": "DreamerV3",
+    "url": "https://danijar.com/project/dreamerv3/",
+    "note": "Model-based reinforcement learning line using learned world models."
+  },
+  {
+    "term": "V-JEPA",
+    "aliases": ["V-JEPA", "JEPA"],
+    "title": "V-JEPA",
+    "url": "https://ai.meta.com/blog/v-jepa-yann-lecun-ai-model-video-joint-embedding-predictive-architecture/",
+    "note": "Meta AI video joint-embedding predictive architecture, related to predictive world-model discussions."
+  }
+]

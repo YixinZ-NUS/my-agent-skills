@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import re
 import shutil
 import subprocess
 import tempfile
@@ -12,6 +13,7 @@ from typing import Optional
 
 import av
 import imageio_ffmpeg
+from av.error import FFmpegError
 from faster_whisper import WhisperModel
 
 
@@ -39,13 +41,29 @@ def parse_hms(value: str) -> float:
 
 
 def media_duration(path: Path) -> float:
-    container = av.open(str(path))
     try:
-        if container.duration is None:
-            raise RuntimeError("Could not determine media duration")
-        return float(container.duration / 1_000_000)
-    finally:
-        container.close()
+        container = av.open(str(path))
+        try:
+            if container.duration is None:
+                raise RuntimeError("Could not determine media duration")
+            return float(container.duration / 1_000_000)
+        finally:
+            container.close()
+    except FFmpegError:
+        result = subprocess.run(
+            [ffmpeg(), "-hide_banner", "-i", str(path)],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            check=False,
+        )
+        match = re.search(r"Duration:\s*(\d+):(\d+):(\d+(?:\.\d+)?)", result.stderr)
+        if not match:
+            raise RuntimeError(
+                f"Could not determine media duration for {path}. ffmpeg reported:\n{result.stderr.strip()}"
+            )
+        hours, minutes, seconds = match.groups()
+        return int(hours) * 3600 + int(minutes) * 60 + float(seconds)
 
 
 def extract_wav(
@@ -110,6 +128,49 @@ def merge_glossary_with_arg(file_terms: list[str], arg_value: Optional[str]) -> 
     return ", ".join(out)
 
 
+def build_glossary_prompt(terms: list[str], max_chars: int) -> Optional[str]:
+    if not terms or max_chars <= 0:
+        return None
+    selected: list[str] = []
+    current_len = len("Domain terms: ")
+    for term in terms:
+        extra = len(term) + (2 if selected else 0)
+        if current_len + extra > max_chars:
+            break
+        selected.append(term)
+        current_len += extra
+    if not selected:
+        return None
+    return "Domain terms: " + ", ".join(selected)
+
+
+def resolve_chinese_script(language: Optional[str], requested: str) -> str:
+    if requested != "auto":
+        return requested
+    if language and language.lower() in {"zh", "zh-cn", "cmn", "mandarin"}:
+        return "simplified"
+    return "none"
+
+
+def make_text_normalizer(chinese_script: str):
+    if chinese_script == "none":
+        return lambda text: text
+    try:
+        from opencc import OpenCC
+    except ImportError as exc:
+        raise SystemExit(
+            "Chinese script normalization requires opencc-python-reimplemented. "
+            "Install it with: pip install opencc-python-reimplemented"
+        ) from exc
+
+    config = {
+        "simplified": "t2s",
+        "traditional": "s2t",
+    }[chinese_script]
+    converter = OpenCC(config)
+    return converter.convert
+
+
 def transcribe_chunk(
     model: WhisperModel,
     wav_path: Path,
@@ -118,6 +179,8 @@ def transcribe_chunk(
     beam_size: int,
     initial_prompt: Optional[str],
     hotwords: Optional[str],
+    normalize_text,
+    condition_on_previous_text: bool,
     vad_filter: bool = True,
 ) -> tuple[str, list[dict]]:
     segments, info = model.transcribe(
@@ -127,13 +190,15 @@ def transcribe_chunk(
         language=language,
         initial_prompt=initial_prompt,
         hotwords=hotwords,
+        condition_on_previous_text=condition_on_previous_text,
     )
     rows = []
     lines = [f"language {info.language} prob {info.language_probability}"]
     for seg in segments:
-        row = {"start": seg.start, "end": seg.end, "text": seg.text.strip()}
+        text = normalize_text(seg.text.strip())
+        row = {"start": seg.start, "end": seg.end, "text": text}
         rows.append(row)
-        lines.append(f"[{seg.start:8.2f} -> {seg.end:8.2f}] {seg.text.strip()}")
+        lines.append(f"[{seg.start:8.2f} -> {seg.end:8.2f}] {text}")
     return "\n".join(lines) + "\n", rows
 
 
@@ -146,8 +211,20 @@ def main() -> None:
     p.add_argument("--start", default=None)
     p.add_argument("--duration", default=None)
     p.add_argument("--language", default=None)
+    p.add_argument(
+        "--chinese-script",
+        choices=("auto", "none", "simplified", "traditional"),
+        default="auto",
+        help="Normalize Chinese transcript text. 'auto' converts zh output to Simplified Chinese.",
+    )
     p.add_argument("--beam-size", type=int, default=1)
     p.add_argument("--initial-prompt", default=None)
+    p.add_argument(
+        "--max-initial-prompt-chars",
+        type=int,
+        default=500,
+        help="Cap glossary-seeded initial prompt length. Hotwords still receive the full glossary.",
+    )
     p.add_argument("--hotwords", default=None)
     p.add_argument(
         "--glossary-file",
@@ -170,6 +247,12 @@ def main() -> None:
         help="Toggle faster-whisper VAD pre-filter. Turn off for very dense / overlapping speech.",
     )
     p.add_argument(
+        "--condition-on-previous-text",
+        choices=("on", "off"),
+        default="off",
+        help="Carry previous decoded text as prompt inside a chunk. Off is safer for long Chinese recordings.",
+    )
+    p.add_argument(
         "--keep-temp-files",
         action="store_true",
         help="Keep extracted chunk WAV files instead of deleting them after transcription.",
@@ -184,7 +267,9 @@ def main() -> None:
     hotwords = merge_glossary_with_arg(glossary_terms, args.hotwords)
     initial_prompt = args.initial_prompt
     if initial_prompt is None and glossary_terms:
-        initial_prompt = ", ".join(glossary_terms)
+        initial_prompt = build_glossary_prompt(glossary_terms, args.max_initial_prompt_chars)
+    chinese_script = resolve_chinese_script(args.language, args.chinese_script)
+    normalize_text = make_text_normalizer(chinese_script)
 
     total_duration = media_duration(src)
     start = parse_hms(args.start) if args.start else 0.0
@@ -212,13 +297,16 @@ def main() -> None:
         "duration": usable_duration,
         "chunk_seconds": chunk_seconds,
         "language": args.language,
+        "chinese_script": chinese_script,
         "beam_size": args.beam_size,
         "initial_prompt": initial_prompt,
+        "max_initial_prompt_chars": args.max_initial_prompt_chars,
         "hotwords": hotwords,
         "glossary_file": args.glossary_file,
         "glossary_terms": glossary_terms,
         "audio_filter": args.audio_filter,
         "vad_filter": args.vad_filter,
+        "condition_on_previous_text": args.condition_on_previous_text,
         "keep_temp_files": args.keep_temp_files,
         "chunks": [],
     }
@@ -239,6 +327,8 @@ def main() -> None:
                 beam_size=args.beam_size,
                 initial_prompt=initial_prompt,
                 hotwords=hotwords,
+                normalize_text=normalize_text,
+                condition_on_previous_text=args.condition_on_previous_text == "on",
                 vad_filter=args.vad_filter == "on",
             )
             text_parts.append(f"## chunk {i:03d} start={sec_to_hms(chunk_start)} duration={sec_to_hms(this_duration)}\n{text}")
@@ -265,9 +355,9 @@ def main() -> None:
         if temp_root and temp_root.exists() and not args.keep_temp_files:
             shutil.rmtree(temp_root)
 
-    (out_dir / "transcript.txt").write_text("\n".join(text_parts))
-    (out_dir / "segments.json").write_text(json.dumps(all_segments, indent=2))
-    (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=2))
+    (out_dir / "transcript.txt").write_text("\n".join(text_parts), encoding="utf-8")
+    (out_dir / "segments.json").write_text(json.dumps(all_segments, ensure_ascii=False, indent=2), encoding="utf-8")
+    (out_dir / "manifest.json").write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
 if __name__ == "__main__":
